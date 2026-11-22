@@ -20,7 +20,9 @@ MAX_BYTES = 8 * 1024 * 1024
 
 
 class FetchError(Exception):
-    pass
+    def __init__(self, message: str, status: int | None = None):
+        super().__init__(message)
+        self.status = status
 
 
 def _check_host(url: str) -> None:
@@ -50,7 +52,7 @@ def fetch(url: str, timeout: float = 20.0) -> tuple[str, bytes, str]:
                     current = urljoin(current, r.headers["location"])
                     continue
                 if r.status_code >= 400:
-                    raise FetchError(f"The site answered {r.status_code}")
+                    raise FetchError(f"The site answered {r.status_code}", r.status_code)
                 chunks, size = [], 0
                 for chunk in r.iter_bytes():
                     size += len(chunk)
@@ -61,8 +63,42 @@ def fetch(url: str, timeout: float = 20.0) -> tuple[str, bytes, str]:
     raise FetchError("Too many redirects")
 
 
+BLOCKED = {401, 403, 406, 429, 503}
+
+
+def fetch_as_browser(url: str, timeout: float = 25.0) -> tuple[str, bytes, str]:
+    """Retry with a real browser's TLS/HTTP2 fingerprint (curl_cffi). Many recipe sites use bot
+    protection that rejects ordinary HTTP clients but lets browsers through."""
+    try:
+        from curl_cffi import requests as creq
+    except ImportError:
+        raise FetchError("The site blocked the server (install curl_cffi for a browser-like retry)", 403)
+    _check_host(url)
+    last = None
+    for target in ("chrome", "safari"):
+        try:
+            r = creq.get(url, impersonate=target, timeout=timeout, allow_redirects=True, max_redirects=6,
+                         headers={"Accept-Language": "en-US,en;q=0.9"})
+        except Exception as e:  # network errors, TLS errors
+            last = FetchError(f"Couldn't connect ({type(e).__name__})")
+            continue
+        _check_host(str(r.url))
+        if r.status_code >= 400:
+            last = FetchError(f"The site answered {r.status_code}", r.status_code)
+            continue
+        if len(r.content) > MAX_BYTES:
+            raise FetchError("Page is too large")
+        return str(r.url), r.content, r.headers.get("content-type", "")
+    raise last or FetchError("The site blocked the server", 403)
+
+
 def fetch_html(url: str) -> tuple[str, str]:
-    final, body, ctype = fetch(url)
+    try:
+        final, body, ctype = fetch(url)
+    except FetchError as e:
+        if e.status not in BLOCKED:
+            raise
+        final, body, ctype = fetch_as_browser(url)
     enc = "utf-8"
     if "charset=" in ctype:
         enc = ctype.split("charset=")[-1].split(";")[0].strip() or "utf-8"

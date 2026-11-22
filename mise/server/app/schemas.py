@@ -75,6 +75,12 @@ class ImportURLIn(BaseModel):
     save: bool = True
 
 
+class ImportHTMLIn(BaseModel):
+    url: str
+    html: str = Field(max_length=8_000_000)
+    save: bool = True
+
+
 class ImportTextIn(BaseModel):
     text: str
     title: Optional[str] = None

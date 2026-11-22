@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from ..auth import current_user
 from ..db import get_db
 from ..models import Collection, Recipe, User
-from ..schemas import ImportTextIn, ImportURLIn
+from ..schemas import ImportHTMLIn, ImportTextIn, ImportURLIn
 from ..serialize import recipe_full
 from ..services import importer
 from ..services.importer import ImportFailed
@@ -37,6 +37,20 @@ def import_url(body: ImportURLIn, user: User = Depends(current_user), db: Sessio
         dup = db.scalar(select(Recipe).where(Recipe.owner_id == user.id, Recipe.source_url == draft["source_url"]))
         if dup:
             return {"saved": True, "duplicate": True, "recipe": recipe_full(dup, user)}
+    return _respond(db, user, draft, body.save)
+
+
+@router.post("/html")
+def import_html(body: ImportHTMLIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """The phone fetched the page itself because the site blocks the server."""
+    url = body.url.strip()
+    existing = db.scalar(select(Recipe).where(Recipe.owner_id == user.id, Recipe.source_url == url))
+    if existing and body.save:
+        return {"saved": True, "duplicate": True, "recipe": recipe_full(existing, user)}
+    try:
+        draft = importer.from_html(body.html, url)
+    except ImportFailed as e:
+        raise HTTPException(422, str(e))
     return _respond(db, user, draft, body.save)
 
 

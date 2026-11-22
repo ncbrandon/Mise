@@ -101,26 +101,31 @@ def from_url(url: str, enrich: bool = True) -> dict:
         raise ImportFailed(f"Couldn't open that page: {e}")
     except Exception as e:
         raise ImportFailed(f"Couldn't open that page ({type(e).__name__})")
-    draft = extract_recipe(html, final)
+    return from_html(html, final, enrich)
+
+
+def from_html(html: str, url: str, enrich: bool = True) -> dict:
+    """Extract from page HTML we already have (fetched by the server, or by the phone when a site
+    blocks the server)."""
+    draft = extract_recipe(html, url)
     if draft:
         return finalize(draft, "web", enrich)
-    meta = page_meta(html, final)
+    meta = page_meta(html, url)
     text = page_text(html)
     if llm.enabled():
         try:
-            d = llm.recipe_from_text(text, hint=f"web page {final}")
+            d = llm.recipe_from_text(text, hint=f"web page {url}")
         except llm.LLMError as e:
             raise ImportFailed(f"No structured recipe on that page and the AI fallback failed: {e}")
         if d:
-            d.setdefault("image_url", None)
             d["image_url"] = d.get("image_url") or meta["image_url"]
-            d["source_url"] = final
+            d["source_url"] = url
             return finalize(d, "web", enrich)
     else:
         d = textparse.parse_text(text, title=meta["title"])
         if len(d["ingredients"]) >= 2 and d["steps"]:
             d["image_url"] = meta["image_url"]
-            d["source_url"] = final
+            d["source_url"] = url
             return finalize(d, "web", enrich)
     raise ImportFailed("Couldn't find a recipe on that page."
                        + ("" if llm.enabled() else " Configure an AI model on the server for tougher pages."))
