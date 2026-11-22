@@ -1,0 +1,43 @@
+<style>
+  :root { --bg:#fbf8f3; --ink:#1f1b16; --muted:#6f665b; --line:#e7dfd3; --accent:#c2552d; --card:#fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161412; --ink:#f2ece4; --muted:#a59a8c; --line:#2e2a25; --card:#1e1b18; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 20px 80px; }
+  h1 { font: 700 2.1rem/1.15 ui-serif, Georgia, "Times New Roman", serif; margin: 0 0 10px; letter-spacing:-.01em; }
+  h2 { font: 700 1.25rem/1.2 ui-serif, Georgia, serif; margin: 34px 0 12px; }
+  h3 { font-size:.8rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:20px 0 6px; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+  .hero { width:100%; aspect-ratio: 16/9; object-fit: cover; border-radius: 14px; margin: 14px 0 18px; background: var(--line); }
+  .meta { display:flex; flex-wrap:wrap; gap:8px 18px; font-size:.92rem; color:var(--muted); margin: 8px 0 4px; }
+  .meta b { color: var(--ink); font-weight:600; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; margin: 18px 0 0; }
+  .pill { border:1px solid var(--line); background:var(--card); color:var(--ink); padding:6px 12px; border-radius:999px; text-decoration:none; font-size:.88rem; }
+  .pill.on { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  ul.ings { list-style:none; padding:0; margin:0; }
+  ul.ings li { padding:9px 0; border-bottom:1px solid var(--line); }
+  ul.ings label { display:flex; gap:12px; align-items:flex-start; cursor:pointer; }
+  ul.ings input { margin-top:5px; accent-color: var(--accent); }
+  ul.ings input:checked + span { text-decoration: line-through; color: var(--muted); }
+  ol.steps { padding:0; margin:0; list-style:none; counter-reset: s; }
+  ol.steps li { counter-increment: s; position:relative; padding: 0 0 18px 44px; }
+  ol.steps li::before { content: counter(s); position:absolute; left:0; top:0; width:28px; height:28px; border-radius:50%;
+    background: var(--accent); color:#fff; font-weight:700; font-size:.85rem; display:grid; place-items:center; }
+  .nut { display:grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap:10px; }
+  .nut div { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
+  .nut b { display:block; font-size:1.15rem; }
+  .bar { display:flex; gap:10px; flex-wrap:wrap; margin-top: 36px; }
+  .btn { background: var(--accent); color:#fff; padding:10px 16px; border-radius:10px; text-decoration:none; font-weight:600; border:0; font-size:1rem; cursor:pointer; }
+  .btn.ghost { background: transparent; color: var(--ink); border:1px solid var(--line); }
+  form.go { display:flex; gap:8px; margin-top: 18px; }
+  form.go input { flex:1; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-size:1rem; }
+  @media print {
+    .controls, .bar, form.go { display:none !important; }
+    body { background:#fff; color:#000; font-size: 11.5pt; }
+    main { padding: 0; max-width: none; }
+    .hero { max-height: 240px; }
+    ol.steps li::before { background:#000; }
+    ul.ings input { display:none; }
+  }
+</style>
