@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 import os
 from typing import Optional
@@ -254,23 +255,48 @@ def from_document(data: bytes, filename: str, content_type: str, enrich: bool = 
     return from_text(documents.plain_text(data), source_type="document", enrich=enrich)
 
 
+_STOP = {"the", "for", "make", "making", "made", "ingredients", "ingredient", "on", "day", "days", "and", "a",
+         "an", "to", "of", "prepare", "preparing", "assemble", "assembly", "step", "steps", "your", "this", "it"}
+
+
+def _tokens(name: str) -> set[str]:
+    words = re.findall(r"[a-zà-ÿ]+", (name or "").lower())
+    return {w.rstrip("s") if len(w) > 3 else w for w in words if w not in _STOP}
+
+
 def components_heuristic(recipe: dict) -> list[dict]:
-    """Sub-recipes from ingredient groups / step sections, when no LLM is configured."""
-    groups: dict[str, dict] = {}
+    """Sub-recipes from ingredient groups and step sections, when no LLM is configured.
+    Groups and sections are matched by shared words ("Starter" <-> "Make the starter")."""
+    comps: list[dict] = []
+
+    def find_or_add(name: str) -> dict:
+        toks = _tokens(name)
+        for c in comps:
+            if c["name"].lower() == name.lower() or (toks and toks & _tokens(c["name"])):
+                return c
+        c = {"name": name, "ingredients": [], "steps": [], "feeds_into": None}
+        comps.append(c)
+        return c
+
+    loose_ings, loose_steps = [], []
     for ing in recipe.get("ingredients") or []:
-        g = ing.get("group")
-        if g:
-            groups.setdefault(g, {"name": g, "ingredients": [], "steps": [], "feeds_into": None})["ingredients"].append(ing.get("raw"))
-    for s in recipe.get("steps") or []:
-        sec = s.get("section")
-        if sec:
-            match = next((k for k in groups if k.lower().replace("for the ", "") in sec.lower() or sec.lower() in k.lower()), None)
-            key = match or sec
-            groups.setdefault(key, {"name": key, "ingredients": [], "steps": [], "feeds_into": None})["steps"].append(s["text"])
+        if ing.get("group"):
+            find_or_add(ing["group"])["ingredients"].append(ing.get("raw"))
+        else:
+            loose_ings.append(ing.get("raw"))
+    for st in recipe.get("steps") or []:
+        if st.get("section"):
+            find_or_add(st["section"])["steps"].append(st["text"])
+        else:
+            loose_steps.append(st["text"])
+
     title = recipe.get("title") or "Finished dish"
-    final = {"name": title, "ingredients": [i.get("raw") for i in recipe.get("ingredients") or [] if not i.get("group")],
-             "steps": [s["text"] for s in recipe.get("steps") or [] if not s.get("section")], "feeds_into": None}
-    comps = list(groups.values())
-    for c in comps:
-        c["feeds_into"] = title
-    return comps + [final]
+    if loose_ings or loose_steps or not comps:
+        final = {"name": title, "ingredients": loose_ings, "steps": loose_steps, "feeds_into": None}
+        for c in comps:
+            c["feeds_into"] = title
+        return comps + [final]
+    # Everything is grouped: the last part (e.g. "Bread", "Assembly") is the finished dish.
+    for c in comps[:-1]:
+        c["feeds_into"] = comps[-1]["name"]
+    return comps

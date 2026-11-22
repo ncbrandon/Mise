@@ -288,11 +288,69 @@ def _meta(soup: BeautifulSoup, *names: str) -> Optional[str]:
     return None
 
 
+def _clean_group_name(name: str) -> str:
+    name = re.sub(r"\s+", " ", name).strip().rstrip(":").strip()
+    name = re.sub(r"\s*\bingredients?$", "", name, flags=re.I).strip()
+    name = re.sub(r"^for the\s+", "", name, flags=re.I).strip()
+    return (name[:1].upper() + name[1:]) if name else ""
+
+
+def html_ingredient_groups(soup: BeautifulSoup) -> list[tuple[str, list[str]]]:
+    """Ingredient groups as shown in the visible recipe card. Recipe plugins (WP Recipe Maker,
+    Tasty, Mediavine Create) usually drop these headings from their schema.org data."""
+    groups: list[tuple[str, list[str]]] = []
+    # WP Recipe Maker
+    for g in soup.select(".wprm-recipe-ingredient-group"):
+        name_el = g.select_one(".wprm-recipe-group-name")
+        items = [li.get_text(" ", strip=True) for li in g.select(".wprm-recipe-ingredient")]
+        if items:
+            groups.append((_clean_group_name(name_el.get_text(" ", strip=True)) if name_el else "", items))
+    if groups:
+        return groups
+    # Tasty Recipes / Mediavine Create: headings followed by lists
+    body = soup.select_one(".tasty-recipes-ingredients-body, .tasty-recipes-ingredients, .mv-create-ingredients")
+    if body:
+        current = ""
+        for el in body.find_all(["h3", "h4", "h5", "p", "strong", "li"]):
+            if el.name == "li":
+                if not groups or groups[-1][0] != current:
+                    groups.append((current, []))
+                groups[-1][1].append(el.get_text(" ", strip=True))
+            elif el.name in ("h3", "h4", "h5") or (el.name in ("p", "strong") and el.get_text(strip=True).endswith(":")):
+                if not el.find_parent("li"):
+                    current = _clean_group_name(el.get_text(" ", strip=True))
+    return groups
+
+
+def _apply_groups(r: dict, groups: list[tuple[str, list[str]]]) -> None:
+    named = [g for g in groups if g[0]]
+    if not named:
+        return
+    if any(str(i).rstrip().endswith(":") for i in r.get("ingredients") or []):
+        return  # schema data already has headings
+    flat_schema = list(r.get("ingredients") or [])
+    total = sum(len(items) for _, items in groups)
+    lines: list[str] = []
+    idx = 0
+    for name, items in groups:
+        if name:
+            lines.append(f"{name}:")
+        for item in items:
+            # keep the schema.org text when the counts line up (it's usually cleaner)
+            lines.append(flat_schema[idx] if total == len(flat_schema) else item)
+            idx += 1
+    r["ingredients"] = lines
+
+
 def extract_recipe(html: str, url: str) -> Optional[dict]:
     soup = BeautifulSoup(html, "lxml")
     r = _from_jsonld(soup, url) or _from_microdata(soup, url) or _from_plugins(soup, url)
     if r is None:
         return None
+    try:
+        _apply_groups(r, html_ingredient_groups(soup))
+    except Exception:
+        pass
     if not r.get("image_url"):
         img = _meta(soup, "og:image", "twitter:image")
         r["image_url"] = urljoin(url, img) if img else None

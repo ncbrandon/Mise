@@ -200,12 +200,15 @@ def nutrition(r: dict) -> dict:
 
 
 def breakdown(r: dict) -> list[dict]:
-    system = ("Break the recipe into its sub-recipes (components that are prepared separately, e.g. "
-              "'Pizza dough', 'Tomato sauce', then the final assembly). Reply JSON: "
+    system = ("Break the recipe into its sub-recipes: components prepared separately, such as 'Starter', "
+              "'Pizza dough', 'Tomato sauce', 'Cinnamon-sugar topping', and the final dish or assembly. Reply JSON: "
               '{"components": [{"name": str, "ingredients": [str], "steps": [str], "feeds_into": str|null}]}. '
-              "Use ingredient lines exactly as given. The final component (the finished dish) has feeds_into null; "
-              "every other component's feeds_into names the component it goes into. Keep steps short. "
-              "A simple one-pot recipe may have just 1-2 components.")
+              "Rules: put EVERY ingredient line into the component that uses it, copied exactly as given. "
+              "If a step adds amounts that are not in the ingredient list (for example 'add 1 cup each of flour, "
+              "sugar and milk' when feeding a starter, or a topping mixed inside a step), add those as ingredient "
+              "lines of that component too. Use the recipe's own ingredient groups and step sections as a guide. "
+              "The finished dish has feeds_into null; every other component's feeds_into is the exact name of the "
+              "component it goes into. Keep steps short and in order. A simple one-pot recipe may have one component.")
     out = chat_json(system, _recipe_brief(r))
     comps = []
     for c in out.get("components") or []:

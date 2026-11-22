@@ -129,6 +129,36 @@ def test_shopping_merge():
     assert aisle_for("cheddar cheese") == "Dairy & Eggs"
 
 
+WPRM_PAGE = """<html><head><script type="application/ld+json">{"@type":"Recipe","name":"Amish Friendship Bread",
+"recipeIngredient":["1/4 cup warm water","1 package active dry yeast","1 cup all-purpose flour","1 cup 2% milk",
+"1 cup friendship bread starter","1 cup vegetable oil","3 large eggs"],
+"recipeInstructions":[{"@type":"HowToSection","name":"Make the starter:","itemListElement":[{"@type":"HowToStep","text":"Dissolve the yeast."},{"@type":"HowToStep","text":"Day 6: add flour, sugar and milk."}]},
+{"@type":"HowToSection","name":"On Day 10, make the bread:","itemListElement":[{"@type":"HowToStep","text":"Preheat the oven to 325F."},{"@type":"HowToStep","text":"Bake 60 minutes."}]}]}</script></head>
+<body><div class="wprm-recipe-ingredient-group"><h4 class="wprm-recipe-group-name">Starter ingredients:</h4><ul>
+<li class="wprm-recipe-ingredient">1/4 cup warm water</li><li class="wprm-recipe-ingredient">1 package active dry yeast</li>
+<li class="wprm-recipe-ingredient">1 cup all-purpose flour</li><li class="wprm-recipe-ingredient">1 cup 2% milk</li></ul></div>
+<div class="wprm-recipe-ingredient-group"><h4 class="wprm-recipe-group-name">Bread ingredients:</h4><ul>
+<li class="wprm-recipe-ingredient">1 cup friendship bread starter</li><li class="wprm-recipe-ingredient">1 cup vegetable oil</li>
+<li class="wprm-recipe-ingredient">3 large eggs</li></ul></div></body></html>"""
+
+
+def test_html_groups_and_breakdown():
+    import sys, types
+    if "pydantic_settings" not in sys.modules:
+        try:
+            import pydantic_settings  # noqa: F401
+        except ImportError:
+            return  # importer needs app config; covered in the Docker build
+    from app.services.importer import finalize, components_heuristic
+    r = finalize(extract_recipe(WPRM_PAGE, "https://ex.com/afb"), "web", enrich=False)
+    assert [i["group"] for i in r["ingredients"]] == ["Starter"] * 4 + ["Bread"] * 3
+    comps = components_heuristic(r)
+    assert [c["name"] for c in comps] == ["Starter", "Bread"]
+    assert len(comps[0]["ingredients"]) == 4 and len(comps[0]["steps"]) == 2
+    assert comps[0]["feeds_into"] == "Bread" and comps[1]["feeds_into"] is None
+    assert len(comps[1]["ingredients"]) == 3 and len(comps[1]["steps"]) == 2
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
