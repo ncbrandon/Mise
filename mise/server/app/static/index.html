@@ -795,10 +795,14 @@ async function viewShopping(main) {
       <div class="seg" id="su"><button data-u="imperial">US</button><button data-u="metric">Metric</button></div>
       <button class="btn" id="copyl">Copy list</button><button class="btn" id="clr">Remove checked</button><button class="btn danger" id="clrall">Clear all</button></div>
     <form id="af" class="row" style="margin-bottom:22px"><input type="text" id="ai" class="grow" placeholder="Add an item, e.g. 2 lb apples" style="flex:1"><button class="btn primary">Add</button></form>
+    <div id="hastatus" class="small muted" style="margin:-10px 0 18px"></div>
     <div id="sl" class="shop"><div class="spinner"></div></div>`;
   let data = null;
   const draw = () => {
     const box = $("#sl");
+    const h = data.home_assistant;
+    $("#hastatus").innerHTML = h?.enabled ? (h.error ? `<span class="error">Home Assistant sync problem: ${esc(h.error)}</span>`
+      : `✓ Synced with Home Assistant (${esc(h.entity)}). Checking off or removing items there updates this list.`) : "";
     if (!data.aisles.length && !data.checked.length) { box.innerHTML = `<div class="empty"><h3>Your list is empty</h3>Open a recipe and choose “Add to shopping list”, or type items above.</div>`; return; }
     const row = (it) => `<div class="item ${it.checked ? "done" : ""}"><input type="checkbox" data-id="${it.id}" ${it.checked ? "checked" : ""}>
       <div class="grow"><span class="n">${esc(it.display)}</span>${it.sources.length ? `<div class="src">${esc(it.sources.join(", "))}</div>` : ""}</div>
@@ -927,6 +931,7 @@ async function viewSettings(main) {
           <span class="muted">Version</span><span>${esc(S.server?.version)}</span>
           <span class="muted">AI features</span><span>${S.server?.ai ? "On" : "Off"}</span>
           <span class="muted">Video speech-to-text</span><span>${S.server?.transcription ? "On" : "Off"}</span>
+          <span class="muted">Home Assistant</span><span>${S.server?.home_assistant ? `Connected list <button class="btn sm" id="hatest" style="margin-left:6px">Test</button> <span id="hares"></span>` : "Not set up"}</span>
           <span class="muted">Signed in as</span><span>@${esc(u.username)}${u.is_admin ? " (admin)" : ""}</span></div>
         <div class="row" style="margin-top:16px"><button class="btn danger" id="so">Sign out</button></div></div>
     </div>`;
@@ -945,6 +950,8 @@ async function viewSettings(main) {
   $("#rst").onchange = async (e) => { const f = e.target.files[0]; if (!f) return; const fd = new FormData(); fd.append("file", f);
     try { const r = await api("POST", "/api/import/backup", fd); toast(`Restored ${r.imported} recipes`); } catch (err) { toast(err.message, 4000); } };
   $("#so").onclick = signOut;
+  $("#hatest")?.addEventListener("click", async () => { const r = await api("POST", "/api/shopping/home-assistant/test");
+    $("#hares").innerHTML = `<span class="${r.ok ? "" : "error"}">${esc(r.message)}</span>`; });
 }
 
 if ("speechSynthesis" in window) speechSynthesis.onvoiceschanged = () => {};

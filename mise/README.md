@@ -77,6 +77,12 @@ Caddy) with HTTPS and set `PUBLIC_URL` to that address, or use Tailscale.
 **Instagram** often blocks anonymous downloads. Export a `cookies.txt` from a logged-in browser and
 copy it into the `mise_media` volume as `/data/cookies.txt`.
 
+**Home Assistant shopping list:** set `HOME_ASSISTANT_URL`, `HOME_ASSISTANT_TOKEN` (a long-lived access
+token from your HA profile → Security) and optionally `HOME_ASSISTANT_TODO_ENTITY` (default
+`todo.shopping_list`). Everything added to the Mise shopping list is added to that Home Assistant to-do list,
+merged quantities rename the existing item instead of duplicating it, and checking off or removing an item on
+either side is reflected on the other. Works with any HA to-do list (Shopping List, Local To-do, Bring!, Todoist…).
+
 **Backups:** the `backup` service writes a daily `pg_dump` to the `mise_backups` volume and keeps 14 days.
 Restore with `pg_restore -h db -U mise -d mise --clean <file>`.
 

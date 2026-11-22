@@ -32,6 +32,11 @@ class Settings(BaseSettings):
 
     ytdlp_cookies_file: str = ""   # Netscape cookies.txt, helps with Instagram
 
+    # Home Assistant shopping list sync (optional)
+    home_assistant_url: str = ""          # e.g. http://192.168.1.10:8123
+    home_assistant_token: str = ""        # long-lived access token (HA profile -> Security)
+    home_assistant_todo_entity: str = "todo.shopping_list"
+
     @property
     def llm_enabled(self) -> bool:
         return bool(self.llm_model) and (bool(self.llm_api_key) or "api.openai.com" not in self.llm_base_url)

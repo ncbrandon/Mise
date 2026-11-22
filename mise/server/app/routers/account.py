@@ -25,6 +25,7 @@ def server_info(db: Session = Depends(get_db)):
         "ai": s.llm_enabled,
         "transcription": bool(s.transcribe_model) and s.llm_enabled,
         "public_url": s.public_url,
+        "home_assistant": bool(s.home_assistant_url and s.home_assistant_token),
     }
 
 

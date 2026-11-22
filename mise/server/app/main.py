@@ -30,6 +30,18 @@ def _wait_for_db(tries: int = 30) -> None:
     raise RuntimeError("Database is not reachable")
 
 
+# Columns added after the first release (create_all doesn't alter existing tables).
+MIGRATIONS = [
+    "ALTER TABLE shopping_items ADD COLUMN IF NOT EXISTS ha_uid VARCHAR(100)",
+]
+
+
+def _migrate() -> None:
+    with engine.begin() as c:
+        for sql in MIGRATIONS:
+            c.execute(text(sql))
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     s = get_settings()
@@ -37,6 +49,7 @@ async def lifespan(app: FastAPI):
         log.warning("SECRET_KEY is the default. Set a long random SECRET_KEY in the stack environment!")
     _wait_for_db()
     Base.metadata.create_all(engine)
+    _migrate()
     os.makedirs(s.media_dir, exist_ok=True)
     log.info("Mise ready. AI: %s", "on (" + s.llm_model + ")" if s.llm_enabled else "off")
     yield

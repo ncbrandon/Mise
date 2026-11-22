@@ -97,6 +97,7 @@ class ShoppingItem(Base):
     checked: Mapped[bool] = mapped_column(Boolean, default=False)
     sources: Mapped[list] = mapped_column(JSONType, default=list)
     position: Mapped[int] = mapped_column(Integer, default=0)
+    ha_uid: Mapped[Optional[str]] = mapped_column(String(100))  # matching Home Assistant to-do item
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

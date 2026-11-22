@@ -28,6 +28,7 @@ services:
     build:
       context: ../server
     image: mise-server:latest
+    # Always rebuild from the repo on deploy and never try to download this image from Docker Hub.
     pull_policy: build
     restart: unless-stopped
     depends_on:
@@ -49,6 +50,9 @@ services:
       TRANSCRIBE_BASE_URL: ${TRANSCRIBE_BASE_URL:-}
       TRANSCRIBE_API_KEY: ${TRANSCRIBE_API_KEY:-}
       YTDLP_COOKIES_FILE: /data/cookies.txt
+      HOME_ASSISTANT_URL: ${HOME_ASSISTANT_URL:-}
+      HOME_ASSISTANT_TOKEN: ${HOME_ASSISTANT_TOKEN:-}
+      HOME_ASSISTANT_TODO_ENTITY: ${HOME_ASSISTANT_TODO_ENTITY:-todo.shopping_list}
     volumes:
       - mise_media:/data
 
